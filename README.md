@@ -1,6 +1,6 @@
 # Deep Past
 
-> 低资源古亚述语机器翻译系统 + 学术论文 QA 数据合成智能体
+> 低资源古亚述语机器翻译系统
 
 [![Python](https://img.shields.io/badge/Python-3.10-blue.svg)]()
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)]()
@@ -10,18 +10,11 @@
 
 ## 项目概览
 
-本项目包含两个核心系统：
-
-| 系统 | 任务 | 核心技术 |
-|------|------|---------|
-| **Deep Past 翻译引擎** | 古亚述楔形文字 → 英文翻译 | ByT5 CPT+SFT、Hybrid MBR、Model Soup |
-| **SimQAAgent 数据工厂** | 从学术论文合成高质量 QA 训练数据 | 多智能体 ReAct、Quality Judge 反馈闭环、逆向任务 |
+将古亚述楔形文字转写翻译为英文的低资源机器翻译系统，采用 ByT5 CPT+SFT 两阶段训练 + Hybrid MBR 推理集成。
 
 ---
 
-## 一、Deep Past 翻译引擎
-
-### 问题定义
+## 问题定义
 
 将 Old Assyrian 楔形文字转写翻译为英文，评估指标 `geom = √(BLEU × chrF++)`。
 
@@ -93,78 +86,9 @@
 
 ---
 
-## 二、SimQAAgent 数据工厂
-
-### 问题定义
-
-从学术论文自动合成高质量 QA 训练数据，用于 LLM 的学术领域 SFT。
-
-### 系统架构
-
-```
-论文全文 Markdown
-  │
-  ├─ 1. 段落提取与任务选择
-  │     按空行切分 → 过滤标题/表格 → 随机选 3~5 种任务
-  │
-  ├─ 2. 多 Agent 并行生成 ─── agents.py
-  │     5 类正向 Agent（Summary/Innovation/Experiment...）
-  │     5 类逆向 Agent（DraftPolish/LogicRefinement/CritiqueRevision...）
-  │     每个 Agent 内部走 ReAct 三轮推理：分析→生成→自省
-  │
-  ├─ 3. Quality Judge 反馈闭环 ─── generator.py
-  │     Judge 独立评审 → 被拒 QA 反馈回原 Agent → 重新生成
-  │     最多 3 轮反馈，超限丢弃
-  │
-  ├─ 4. 后处理与验证
-  │     段落标签匹配 / 语言推断 / 长度检查
-  │
-  └─ PostgreSQL 入库 → SFT 训练集
-```
-
-### 关键技术点
-
-**ReAct 多轮自省——不是一次调用就出结果**
-
-每个 Agent 走三轮对话：第一轮分析论文关键内容，第二轮生成 QA 初稿，第三轮自查事实准确性。三轮共享对话历史，保证上下文连贯。
-
-**逆向任务——可控退化生成负样本**
-
-5 类逆向 Agent 只负责生成退化版 Question，Answer 直接注入论文原文段落。这保证了 Answer 部分零幻觉——不是 LLM 编的，而是真实的高质量学术文本。
-
-**Quality Judge——独立评审 + 反馈闭环**
-
-Judge 是单独的 Agent，temperature=0.3 保证评判稳定。逐条打分并输出拒绝原因，被拒的 QA 携带反馈重新生成，最多三轮。Judge 调用失败时走 fallback 全部通过，不丢数据。
-
-**逆向任务的 5 种退化策略**
-
-| 逆向任务 | 退化方式 |
-|---------|---------|
-| DraftPolish | 草稿润色——引入冗余和不精确表述 |
-| LogicRefinement | 逻辑修复——制造推理链断裂 |
-| CritiqueRevision | 评审修改——加入批评性误导 |
-| HedgingTone | 语气调整——把确定性表述改为模糊表达 |
-| AbstractInstruction | 摘要指令——从摘要生成脱离具体段落的泛化问题 |
-
-### MyAutoConverter——MCQ 评测管线
-
-基于 QASA 论文实现的自动选择题生成与评测系统：
-
-```
-QASA 样本 → 5 类干扰项生成(Concept/Reasoning/Nuance/Data/QuestionBias)
-          → Reviewer 审核 → Refiner 改进 → Fusion 选优
-          → Evaluator 评估 → Final Refiner（低分时触发）
-          → 标准 4 选 1 MCQ → vLLM 评测 → accuracy
-```
-
-双模型设计：MiMo-V2-Flash 做生成审核（15 次调用/样本），gpt-5-mini 做决策（2~3 次调用/样本）。
-
----
-
 ## 技术栈
 
 - **模型训练**：PyTorch、Transformers、ms-swift、DeepSpeed ZeRO
 - **推理部署**：vLLM、PagedAttention
-- **智能体**：OpenAI API、Pydantic、ThreadPoolExecutor
-- **数据工程**：MinerU OCR、PostgreSQL、json_repair
-- **评测**：BLEU、chrF++、MMLU、C-Eval、SQL 执行准确性
+- **数据工程**：MinerU OCR
+- **评测**：BLEU、chrF++
