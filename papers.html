@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>QASA & AutoConverter 论文解读</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0f1117; color: #e2e8f0; padding: 40px 20px; line-height: 1.7; }
+
+  .container { max-width: 1000px; margin: 0 auto; }
+  h1 { text-align: center; font-size: 1.5rem; color: #a78bfa; margin-bottom: 6px; }
+  .subtitle { text-align: center; color: #475569; font-size: 0.82rem; margin-bottom: 48px; }
+
+  /* paper card */
+  .paper { border-radius: 16px; padding: 28px 32px; margin-bottom: 40px; }
+  .paper.qasa { background: #0f1f3d; border: 1.5px solid #3b82f6; }
+  .paper.auto { background: #1a0f2e; border: 1.5px solid #8b5cf6; }
+
+  .paper-header { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
+  .paper-badge { border-radius: 8px; padding: 6px 12px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+  .qasa .paper-badge { background: #1d4ed8; color: #bfdbfe; }
+  .auto .paper-badge { background: #6d28d9; color: #ddd6fe; }
+  .paper-title { font-size: 1.05rem; font-weight: 700; }
+  .qasa .paper-title { color: #60a5fa; }
+  .auto .paper-title { color: #c4b5fd; }
+  .paper-meta { font-size: 0.75rem; color: #64748b; margin-top: 3px; }
+
+  /* sections */
+  .section { margin-bottom: 20px; }
+  .section h3 { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
+  .qasa .section h3 { color: #3b82f6; }
+  .auto .section h3 { color: #8b5cf6; }
+  .section p { font-size: 0.85rem; color: #cbd5e1; }
+
+  /* tag grid */
+  .tag-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tag { border-radius: 6px; padding: 5px 11px; font-size: 0.76rem; font-weight: 600; }
+  .tag-blue  { background: #1e3a5f; color: #7dd3fc; border: 1px solid #1d4ed8; }
+  .tag-purple{ background: #2e1065; color: #d8b4fe; border: 1px solid #7c3aed; }
+  .tag-green { background: #052e16; color: #86efac; border: 1px solid #16a34a; }
+  .tag-pink  { background: #500724; color: #fda4af; border: 1px solid #be123c; }
+  .tag-amber { background: #1c1400; color: #fde68a; border: 1px solid #b45309; }
+
+  /* pipeline */
+  .pipeline-row { display: flex; align-items: center; gap: 0; flex-wrap: wrap; margin-top: 8px; }
+  .pipe-step {
+    border-radius: 8px; padding: 8px 14px; font-size: 0.76rem; font-weight: 600;
+    text-align: center; min-width: 90px;
+  }
+  .pipe-arrow { color: #475569; font-size: 1.1rem; padding: 0 6px; }
+  .pipe-blue   { background: #0f2640; border: 1px solid #2563eb; color: #93c5fd; }
+  .pipe-purple { background: #1e0a40; border: 1px solid #7c3aed; color: #ddd6fe; }
+  .pipe-green  { background: #052e16; border: 1px solid #16a34a; color: #86efac; }
+  .pipe-pink   { background: #3b0a1a; border: 1px solid #be123c; color: #fda4af; }
+  .pipe-amber  { background: #1c1000; border: 1px solid #d97706; color: #fcd34d; }
+
+  /* qtype table */
+  .qtype-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 8px; }
+  .qtype-card { background: #0a192f; border: 1px solid #1e3a5f; border-radius: 8px; padding: 10px 12px; }
+  .qtype-card .name { font-size: 0.76rem; font-weight: 700; color: #60a5fa; margin-bottom: 4px; }
+  .qtype-card .desc { font-size: 0.72rem; color: #94a3b8; }
+
+  /* distractor table */
+  .dist-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 8px; }
+  .dist-card { background: #1a0a2e; border: 1px solid #4c1d95; border-radius: 8px; padding: 10px 8px; text-align: center; }
+  .dist-card .num  { font-size: 1.2rem; font-weight: 800; color: #a78bfa; }
+  .dist-card .name { font-size: 0.72rem; font-weight: 700; color: #c4b5fd; margin: 2px 0; }
+  .dist-card .desc { font-size: 0.66rem; color: #7c6aad; }
+
+  /* connection box */
+  .connection { background: #0d1f1a; border: 1.5px solid #059669; border-radius: 12px; padding: 20px 24px; margin-top: 0; }
+  .connection h2 { font-size: 0.9rem; color: #34d399; margin-bottom: 14px; }
+  .conn-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .conn-item { flex: 1; min-width: 200px; background: #052e16; border: 1px solid #16a34a; border-radius: 8px; padding: 10px 14px; font-size: 0.78rem; }
+  .conn-item .from { color: #6ee7b7; font-weight: 700; margin-bottom: 4px; }
+  .conn-item .to   { color: #94a3b8; }
+
+  .divider { height: 1px; background: #1e293b; margin: 8px 0 16px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>QASA & AutoConverter 论文解读</h1>
+<p class="subtitle">两篇论文在你的项目中的角色 · 核心方法 · 联系与区别</p>
+
+<!-- ===== QASA ===== -->
+<div class="paper qasa">
+  <div class="paper-header">
+    <div class="paper-badge">ICML 2023</div>
+    <div>
+      <div class="paper-title">QASA: Advanced Question Answering on Scientific Articles</div>
+      <div class="paper-meta">Lee et al., ICML 2023 · 科学文献问答评测基准</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>🎯 论文要解决什么问题</h3>
+    <p>现有 QA 基准（SQuAD、TriviaQA）测的是简单事实抽取，无法评估模型对科学论文的深层理解能力——比如理解实验逻辑、评估创新贡献、整合多段落信息。QASA 定义了一套更贴近真实科研阅读场景的 QA 评测范式。</p>
+  </div>
+
+  <div class="section">
+    <h3>📐 四类问题类型（Question Types）</h3>
+    <div class="qtype-grid">
+      <div class="qtype-card">
+        <div class="name">Factoid</div>
+        <div class="desc">直接从文本提取事实性答案，最基础</div>
+      </div>
+      <div class="qtype-card">
+        <div class="name">Reasoning</div>
+        <div class="desc">需要跨段落推理，整合多处信息</div>
+      </div>
+      <div class="qtype-card">
+        <div class="name">Explanation</div>
+        <div class="desc">解释现象或结论背后的机制</div>
+      </div>
+      <div class="qtype-card">
+        <div class="name">Implication</div>
+        <div class="desc">从结果推断潜在影响或局限</div>
+      </div>
+      <div class="qtype-card">
+        <div class="name">Comparison</div>
+        <div class="desc">比较方法间的异同与优劣</div>
+      </div>
+      <div class="qtype-card">
+        <div class="name">Evaluation</div>
+        <div class="desc">对论文工作质量的批判性判断</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>📊 评测格式</h3>
+    <div class="tag-grid">
+      <span class="tag tag-blue">多项选择题（MCQ）</span>
+      <span class="tag tag-blue">4个选项，1个正确</span>
+      <span class="tag tag-blue">干扰项语义相近，难以排除</span>
+      <span class="tag tag-blue">人工标注 + 专家验证</span>
+    </div>
+    <p style="margin-top:10px; font-size:0.82rem; color:#64748b;">QASA 的关键贡献：干扰项不是随机生成的，而是专家精心设计的"合理错误"——这是它比普通 QA 基准更难的原因。</p>
+  </div>
+
+  <div class="section">
+    <h3>🔗 和你项目的关系</h3>
+    <div class="tag-grid">
+      <span class="tag tag-green">借鉴题型分类框架</span>
+      <span class="tag tag-green">MCQ 格式评测思路</span>
+      <span class="tag tag-green">干扰项设计理念</span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== AutoConverter ===== -->
+<div class="paper auto">
+  <div class="paper-header">
+    <div class="paper-badge">arXiv 2025</div>
+    <div>
+      <div class="paper-title">AutoConverter: Automated MCQ Generation from Scientific Documents</div>
+      <div class="paper-meta">arXiv 2501.03225 · 2025 · 自动化 MCQ 生成管线</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>🎯 论文要解决什么问题</h3>
+    <p>QASA 的题目是人工标注的，成本极高，无法规模化。AutoConverter 的目标是：给定任意科学文档，<strong style="color:#c4b5fd">自动生成 QASA 质量级别的 MCQ</strong>，让评测可以低成本扩展到新领域。</p>
+  </div>
+
+  <div class="section">
+    <h3>🔀 五类干扰项生成策略</h3>
+    <div class="dist-grid">
+      <div class="dist-card">
+        <div class="num">①</div>
+        <div class="name">Concept</div>
+        <div class="desc">相近概念替换，混淆术语边界</div>
+      </div>
+      <div class="dist-card">
+        <div class="num">②</div>
+        <div class="name">Reasoning</div>
+        <div class="desc">推理链断裂，前提对但结论错</div>
+      </div>
+      <div class="dist-card">
+        <div class="num">③</div>
+        <div class="name">Nuance</div>
+        <div class="desc">细节偏差，数字或程度词替换</div>
+      </div>
+      <div class="dist-card">
+        <div class="num">④</div>
+        <div class="name">Data</div>
+        <div class="desc">实验数值篡改，结果伪造</div>
+      </div>
+      <div class="dist-card">
+        <div class="num">⑤</div>
+        <div class="name">Question Bias</div>
+        <div class="desc">利用题干暗示引导错误选择</div>
+      </div>
+    </div>
+    <p style="margin-top:10px; font-size:0.81rem; color:#7c6aad;">五类覆盖不同认知层级的错误模式——Concept/Data 针对记忆，Reasoning 针对推理，Nuance 针对细节，Bias 针对阅读策略。</p>
+  </div>
+
+  <div class="section">
+    <h3>⚙️ 生成管线流程</h3>
+    <div class="pipeline-row">
+      <div class="pipe-step pipe-purple">文档段落<br><span style="font-size:0.65rem">原始输入</span></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step pipe-purple">5类干扰项<br><span style="font-size:0.65rem">并行生成</span></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step pipe-pink">Reviewer<br><span style="font-size:0.65rem">质量审查</span></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step pipe-pink">Refiner<br><span style="font-size:0.65rem">修正迭代</span></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step pipe-amber">Fusion<br><span style="font-size:0.65rem">双模型选优</span></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step pipe-green">最终 MCQ<br><span style="font-size:0.65rem">高质量输出</span></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>🤖 双模型设计</h3>
+    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;">
+      <div style="flex:1; min-width:200px; background:#1e0a40; border:1px solid #7c3aed; border-radius:8px; padding:12px;">
+        <div style="font-size:0.76rem; font-weight:700; color:#c4b5fd; margin-bottom:5px;">GENERATOR_MODEL（快）</div>
+        <div style="font-size:0.75rem; color:#94a3b8;">负责5类干扰项的初始生成，追求速度和覆盖面</div>
+      </div>
+      <div style="flex:1; min-width:200px; background:#1e0a40; border:1px solid #7c3aed; border-radius:8px; padding:12px;">
+        <div style="font-size:0.76rem; font-weight:700; color:#c4b5fd; margin-bottom:5px;">CORE_MODEL（准）</div>
+        <div style="font-size:0.75rem; color:#94a3b8;">负责 Fusion 阶段从多套候选里筛选最优组合，追求质量</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>🔗 和你项目的关系</h3>
+    <div class="tag-grid">
+      <span class="tag tag-purple">复现管线结构</span>
+      <span class="tag tag-purple">五类干扰项实现</span>
+      <span class="tag tag-purple">Reviewer-Refiner 迭代</span>
+      <span class="tag tag-purple">Fusion 选优逻辑</span>
+      <span class="tag tag-purple">领域化（图书馆采编）</span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CONNECTION ===== -->
+<div class="connection">
+  <h2>🔗 两篇论文在你项目中的分工</h2>
+  <div class="conn-row">
+    <div class="conn-item">
+      <div class="from">QASA → 评测框架设计</div>
+      <div class="to">定义"什么是好的科学 QA"，提供题型分类体系和 MCQ 评测范式，是评测的理论依据</div>
+    </div>
+    <div class="conn-item">
+      <div class="from">AutoConverter → 生成工程实现</div>
+      <div class="to">提供可落地的自动化 MCQ 生成管线，解决 QASA 人工标注成本过高无法规模化的问题</div>
+    </div>
+    <div class="conn-item">
+      <div class="from">你的工作 → 领域迁移 + 闭环评测</div>
+      <div class="to">把 AutoConverter 管线迁移到图书馆采编领域，用生成的 MCQ + vLLM 管线横向对比各阶段 checkpoint 表现</div>
+    </div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

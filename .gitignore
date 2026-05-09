@@ -1,0 +1,22 @@
+# 模型权重（太大，不适合 GitHub）
+model/
+
+# 大型数据文件
+data/
+data_v2/
+
+# 大型 JSON
+testset_answerable_1554_v1.1.json
+
+# 日志
+train_restart.log
+
+# IDE
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.eggs/
+*.egg-info/

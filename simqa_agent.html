@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>SimQAAgent 架构图</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0f1117; color: #e2e8f0; padding: 40px 20px; }
+  h1 { text-align: center; font-size: 1.6rem; color: #a78bfa; margin-bottom: 8px; letter-spacing: 1px; }
+  .subtitle { text-align: center; color: #64748b; font-size: 0.85rem; margin-bottom: 40px; }
+
+  .pipeline { display: flex; flex-direction: column; align-items: center; gap: 0; max-width: 960px; margin: 0 auto; }
+
+  /* ---- node styles ---- */
+  .node {
+    border-radius: 10px;
+    padding: 12px 24px;
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+    position: relative;
+    width: 100%;
+  }
+  .node-input   { background: #1e293b; border: 1.5px solid #475569; color: #94a3b8; max-width: 420px; }
+  .node-selector{ background: #1e1b4b; border: 1.5px solid #6366f1; color: #a5b4fc; max-width: 280px; }
+  .node-judge   { background: #172554; border: 1.5px solid #3b82f6; color: #93c5fd; max-width: 460px; }
+  .node-db      { background: #0f2a1a; border: 1.5px solid #22c55e; color: #86efac; max-width: 320px; }
+  .node-output  { background: #1a1400; border: 1.5px solid #eab308; color: #fde047; max-width: 360px; }
+  .node sub     { font-size: 0.72rem; font-weight: 400; color: #64748b; display: block; margin-top: 3px; }
+
+  /* ---- arrow ---- */
+  .arrow { width: 2px; background: #334155; height: 28px; position: relative; }
+  .arrow::after { content:'▼'; position:absolute; bottom:-12px; left:50%; transform:translateX(-50%); color:#475569; font-size:12px; }
+
+  /* ---- branch ---- */
+  .branch { display: flex; gap: 24px; width: 100%; max-width: 900px; align-items: flex-start; justify-content: center; }
+
+  /* ---- task group ---- */
+  .task-group {
+    flex: 1;
+    border-radius: 12px;
+    padding: 16px;
+    min-width: 0;
+  }
+  .task-group.positive { background: #1a1130; border: 1.5px solid #7c3aed; }
+  .task-group.inverse  { background: #1a1020; border: 1.5px solid #db2777; }
+
+  .task-group h3 { font-size: 0.8rem; font-weight: 700; margin-bottom: 12px; text-align: center; }
+  .task-group.positive h3 { color: #c4b5fd; }
+  .task-group.inverse  h3 { color: #f9a8d4; }
+
+  .task-list { display: flex; flex-direction: column; gap: 6px; }
+  .task-item {
+    border-radius: 7px;
+    padding: 8px 12px;
+    font-size: 0.8rem;
+  }
+  .task-item.pos { background: #2e1065; border-left: 3px solid #7c3aed; color: #ddd6fe; }
+  .task-item.inv { background: #500724; border-left: 3px solid #db2777; color: #fce7f3; }
+  .task-item .desc { font-size: 0.7rem; color: #94a3b8; font-weight: 400; margin-top: 2px; }
+
+  /* ---- react box ---- */
+  .react-section { width: 100%; max-width: 900px; }
+  .react-box {
+    background: #0c1a2e;
+    border: 1.5px dashed #0ea5e9;
+    border-radius: 12px;
+    padding: 16px 20px;
+  }
+  .react-box h3 { font-size: 0.8rem; color: #38bdf8; margin-bottom: 10px; }
+  .react-steps { display: flex; align-items: center; gap: 0; flex-wrap: wrap; justify-content: center; }
+  .react-step {
+    background: #0f2640;
+    border: 1px solid #0369a1;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 0.78rem;
+    color: #7dd3fc;
+    text-align: center;
+    min-width: 100px;
+  }
+  .react-arrow { color: #0369a1; font-size: 1.1rem; padding: 0 6px; }
+
+  /* ---- judge box ---- */
+  .judge-section { width: 100%; max-width: 900px; }
+  .judge-inner {
+    background: #0d1f3c;
+    border: 1.5px solid #2563eb;
+    border-radius: 12px;
+    padding: 16px 20px;
+  }
+  .judge-inner h3 { font-size: 0.8rem; color: #60a5fa; margin-bottom: 10px; }
+  .judge-criteria { display: flex; gap: 10px; flex-wrap: wrap; }
+  .criterion {
+    flex: 1;
+    min-width: 140px;
+    background: #172554;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.76rem;
+    color: #93c5fd;
+    border-left: 3px solid #3b82f6;
+  }
+  .criterion .label { font-weight: 700; margin-bottom: 4px; color: #bfdbfe; }
+  .feedback-row {
+
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+  }
+  .feedback-pass {
+    flex: 1;
+    background: #052e16;
+    border: 1px solid #16a34a;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.76rem;
+    color: #86efac;
+    text-align: center;
+  }
+  .feedback-fail {
+    flex: 1;
+    background: #3b0764;
+    border: 1px solid #9333ea;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.76rem;
+    color: #d8b4fe;
+    text-align: center;
+  }
+
+  /* ---- inverse detail ---- */
+  .inverse-detail {
+    width: 100%; max-width: 900px;
+    background: #1a0a10;
+    border: 1.5px solid #db2777;
+    border-radius: 12px;
+    padding: 16px 20px;
+  }
+  .inverse-detail h3 { font-size: 0.8rem; color: #f472b6; margin-bottom: 10px; }
+  .inv-flow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .inv-block {
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.76rem;
+    text-align: center;
+    min-width: 130px;
+  }
+  .inv-block.good { background: #052e16; border: 1px solid #16a34a; color: #86efac; }
+  .inv-block.bad  { background: #450a0a; border: 1px solid #ef4444; color: #fca5a5; }
+  .inv-block.qa   { background: #1e1b4b; border: 1px solid #6366f1; color: #c7d2fe; }
+  .inv-arrow { color: #6b7280; font-size: 1.2rem; }
+
+  /* ---- section label ---- */
+  .section-label {
+    font-size: 0.72rem;
+    color: #475569;
+    text-align: center;
+    margin: 4px 0;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .connector-h {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    width: 100%;
+    max-width: 900px;
+    position: relative;
+    height: 32px;
+  }
+  .connector-h::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    height: 100%;
+    background: #334155;
+  }
+</style>
+</head>
+<body>
+
+<h1>SimQAAgent 多智能体学术 QA 合成框架</h1>
+<p class="subtitle">用于生成学术写作 SFT 训练数据 · 基于 ReAct 模式 · 带质量过滤闭环</p>
+
+<div class="pipeline">
+
+  <!-- INPUT -->
+  <div class="node node-input">
+    📄 输入：学术论文 PDF
+    <sub>MinerU OCR 提取 → 段落切分 → 选取 excerpt</sub>
+  </div>
+  <div class="arrow"></div>
+
+  <!-- SELECTOR -->
+  <div class="node node-selector">
+    🎲 Task Selector
+    <sub>按预设比例随机分配任务类型（正向 / 逆向）</sub>
+  </div>
+  <div class="arrow"></div>
+
+  <!-- BRANCH: positive + inverse -->
+  <div class="branch">
+
+    <!-- POSITIVE -->
+    <div class="task-group positive">
+      <h3>✅ 正向任务（理解 → 生成 QA）</h3>
+      <div class="task-list">
+        <div class="task-item pos">
+          Summary
+          <div class="desc">论文整体摘要理解</div>
+        </div>
+        <div class="task-item pos">
+          Innovation
+          <div class="desc">创新点提炼与解释</div>
+        </div>
+        <div class="task-item pos">
+          ExperimentSummary
+          <div class="desc">实验结论归纳</div>
+        </div>
+        <div class="task-item pos">
+          ExperimentSteps
+          <div class="desc">实验过程细节问答</div>
+        </div>
+        <div class="task-item pos">
+          Interpretation
+          <div class="desc">结果解读与推断</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INVERSE -->
+    <div class="task-group inverse">
+      <h3>🔄 逆向任务（受控退化 → 改写任务）</h3>
+      <div class="task-list">
+        <div class="task-item inv">
+          DraftPolish
+          <div class="desc">给定草稿，生成精炼版本</div>
+        </div>
+        <div class="task-item inv">
+          LogicRefinement
+          <div class="desc">逻辑跳跃版 → 严谨原文</div>
+        </div>
+        <div class="task-item inv">
+          CritiqueRevision
+          <div class="desc">批评性重写，修复论证缺陷</div>
+        </div>
+        <div class="task-item inv">
+          HedgingTone
+          <div class="desc">语气夸张版 → 学术措辞原文</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="arrow"></div>
+
+  <!-- REACT LOOP -->
+  <div class="react-section">
+    <div class="react-box">
+      <h3>🔁 每个 Agent 内部：ReAct 多轮推理循环</h3>
+      <div class="react-steps">
+        <div class="react-step">🤔 Think<br><span style="font-size:0.68rem;color:#475569">分析任务&上下文</span></div>
+        <div class="react-arrow">→</div>
+        <div class="react-step">⚡ Act<br><span style="font-size:0.68rem;color:#475569">调用LLM生成QA</span></div>
+        <div class="react-arrow">→</div>
+        <div class="react-step">🔍 Observe<br><span style="font-size:0.68rem;color:#475569">检查输出格式/质量</span></div>
+        <div class="react-arrow">→</div>
+        <div class="react-step">✏️ Reflect<br><span style="font-size:0.68rem;color:#475569">自我批评反思</span></div>
+        <div class="react-arrow">→</div>
+        <div class="react-step">🔄 Refine<br><span style="font-size:0.68rem;color:#475569">修正重生成</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="arrow"></div>
+
+  <!-- QUALITY JUDGE -->
+  <div class="judge-section">
+    <div class="judge-inner">
+      <h3>⚖️ Quality Judge Agent（质量门控）</h3>
+      <div class="judge-criteria">
+        <div class="criterion">
+          <div class="label">Q 有效性</div>
+          问题是否清晰、有意义、不含答案
+        </div>
+        <div class="criterion">
+          <div class="label">A 准确性</div>
+          答案是否忠实于原文段落
+        </div>
+        <div class="criterion">
+          <div class="label">逆向合规</div>
+          退化版本是否真的有缺陷
+        </div>
+        <div class="criterion">
+          <div class="label">语言质量</div>
+          学术用语、逻辑连贯性
+        </div>
+      </div>
+      <div class="feedback-row">
+        <div class="feedback-pass">✅ 合格 → 写入数据库</div>
+        <div class="feedback-fail">❌ 不合格 → 反馈给 Agent 重生成（最多 N 轮）</div>
+      </div>
+    </div>
+  </div>
+  <div class="arrow"></div>
+
+  <!-- DB -->
+  <div class="node node-db">
+    🗄️ PostgreSQL · r5_d3_academic_writing 表
+    <sub>存储合格 QA pairs + 元信息（task_type / paper_id / score）</sub>
+  </div>
+  <div class="arrow"></div>
+
+  <!-- OUTPUT -->
+  <div class="node node-output">
+    🎓 SFT 训练数据
+    <sub>导出为 r5_d3_academic_writing_sft.jsonl · 用于 Qwen 学术写作微调</sub>
+  </div>
+
+</div>
+
+<!-- INVERSE DETAIL -->
+<div style="max-width:960px;margin:40px auto 0;">
+  <div class="inverse-detail">
+    <h3>🔄 逆向任务：受控退化的数据构造逻辑</h3>
+    <div class="inv-flow">
+      <div class="inv-block good">原始论文段落<br><span style="font-size:0.68rem">高质量学术写作</span></div>
+      <div class="inv-arrow">→</div>
+      <div class="inv-block bad">Agent 故意退化<br><span style="font-size:0.68rem">注入定向缺陷</span></div>
+      <div class="inv-arrow">→</div>
+      <div class="inv-block qa">构造训练对<br><span style="font-size:0.68rem">Q=退化版 / A=原文</span></div>
+      <div class="inv-arrow">→</div>
+      <div class="inv-block good">模型学会改写<br><span style="font-size:0.68rem">"如何写好学术文章"</span></div>
+    </div>
+    <div style="margin-top:12px; font-size:0.76rem; color:#9ca3af; line-height:1.6;">
+      与随机噪声注入的区别：缺陷类型是<strong style="color:#f9a8d4">语言学上有意义的</strong>（逻辑跳跃、语气夸张、结构混乱），
+      而不是随机字符损坏。Quality Judge 会验证退化版本"真的更差"，保证训练信号的方向性。
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
