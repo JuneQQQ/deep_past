@@ -12,6 +12,8 @@
 
 将古亚述楔形文字转写翻译为英文的低资源机器翻译系统，采用 ByT5 CPT+SFT 两阶段训练 + Hybrid MBR 推理集成。
 
+🏆 **Kaggle Deep Past Challenge — 109th / 银牌方案**
+
 ---
 
 ## 问题定义
